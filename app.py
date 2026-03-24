@@ -89,6 +89,25 @@ def create_calendar_event(summary):
         return f"📅 CALENDAR: Event '{summary}' scheduled for now."
     except Exception as e: return f"❌ CALENDAR FAILED: {str(e)}"
 
+@app.get("/test-auth")
+async def test_auth():
+    results = {}
+    try:
+        # Test Tasks API: Try to list task lists
+        tasks_list = tasks_service.tasklists().list().execute()
+        results["tasks"] = "✅ Connected! Found " + str(len(tasks_list.get('items', []))) + " lists."
+    except Exception as e:
+        results["tasks"] = f"❌ Failed: {str(e)}"
+
+    try:
+        # Test Calendar API: Try to get the primary calendar metadata
+        cal_metadata = cal_service.calendars().get(calendarId='primary').execute()
+        results["calendar"] = f"✅ Connected to: {cal_metadata.get('summary')}"
+    except Exception as e:
+        results["calendar"] = f"❌ Failed: {str(e)}"
+
+    return results
+
 
 @app.get("/")
 async def read_index():
