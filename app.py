@@ -6,6 +6,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from vertexai.generative_models import GenerativeModel
+from googleapiclient.discovery import build
+from google.auth import default
 
 load_dotenv()
 PROJECT_ID = os.getenv("PROJECT_ID")
@@ -42,6 +44,24 @@ def search_places_new(query):
             return f"📍 FOUND: {name} at {addr}"
     return f"📍 MAPS: Could not find '{query}'"
 
+def create_google_task(title):
+    try:
+        # 1. Get credentials from your Cloud Shell session
+        creds, _ = default()
+        service = build('tasks', 'v1', credentials=creds)
+
+        # 2. Define the task
+        task_body = {
+            'title': title,
+            'notes': 'Added via Intent-Execution AI'
+        }
+
+        # 3. Insert into your default list ('@default')
+        result = service.tasks().insert(tasklist='@default', body=task_body).execute()
+        return f"✅ TASK CREATED: '{title}' in your Google Tasks."
+    except Exception as e:
+        return f"❌ TASK FAILED: {str(e)}"
+
 @app.post("/execute")
 async def execute(request: UserInput):
     try:
@@ -57,6 +77,10 @@ async def execute(request: UserInput):
                 execution_log.append(search_places_new(desc))
             elif item.get("type") == "event":
                 execution_log.append(f"📅 Event: {desc}")
+            elif item.get("type") == "task":
+                # Real Execution!
+                task_res = create_google_task(desc)
+                execution_log.append(task_res)
             else:
                 execution_log.append(f"✅ Task: {desc}")
 
