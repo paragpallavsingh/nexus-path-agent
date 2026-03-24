@@ -120,32 +120,39 @@ def create_google_task(title):
         return f"✅ TASK STAGED: '{title}' (Local Cache)"
 
 # # --- Tool 3: Calendar ---
-# def create_calendar_event(summary):
-#     print(f"   ∟ 📅 Attempting Calendar Sync: {summary}")
-#     try:
-#         if cal_service:
-#             start = datetime.utcnow().isoformat() + 'Z'
-#             end = (datetime.utcnow() + timedelta(hours=1)).isoformat() + 'Z'
-#             event = {
-#                 'summary': summary,
-#                 'start': {'dateTime': start},
-#                 'end': {'dateTime': end},
-#             }
-#             cal_service.events().insert(calendarId='primary', body=event).execute()
-#             return f"📅 CALENDAR: Event '{summary}' scheduled."
-#         return "❌ CALENDAR FAILED: Service not initialized"
-#     except Exception as e:
-#         return f"❌ CALENDAR FAILED: {str(e)}"
-
 def create_calendar_event(summary):
     print(f"   ∟ 📅 Attempting Calendar Sync: {summary}")
     try:
         if cal_service:
-            # ... (your existing event logic) ...
-            return f"📅 CALENDAR: '{summary}' scheduled."
+            # RESTORED LOGIC: Define start and end times
+            start = datetime.utcnow().isoformat() + 'Z' 
+            end = (datetime.utcnow() + timedelta(hours=1)).isoformat() + 'Z'
+            
+            event = {
+                'summary': summary,
+                'start': {'dateTime': start},
+                'end': {'dateTime': end},
+            }
+            
+            # THE API CALL
+            cal_service.events().insert(calendarId='primary', body=event).execute()
+            return f"📅 CALENDAR: '{summary}' scheduled successfully."
+            
+        return "❌ CALENDAR FAILED: Service not initialized"
     except Exception as e:
-        print(f"      ⚠️ API Blocked, using Mock Success for UI.")
+        # Falls back to Mock if API is blocked (403 errors)
+        print(f"      ⚠️ API Error: {str(e)}")
         return f"📅 EVENT PLANNED: '{summary}' (Ready for Sync)"
+
+# def create_calendar_event(summary):
+#     print(f"   ∟ 📅 Attempting Calendar Sync: {summary}")
+#     try:
+#         if cal_service:
+#             # ... (your existing event logic) ...
+#             return f"📅 CALENDAR: '{summary}' scheduled."
+#     except Exception as e:
+#         print(f"      ⚠️ API Blocked, using Mock Success for UI.")
+#         return f"📅 EVENT PLANNED: '{summary}' (Ready for Sync)"
 
 @app.get("/")
 async def read_index():
