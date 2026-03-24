@@ -71,14 +71,26 @@ def search_places_new(query):
         "X-Goog-Api-Key": MAPS_KEY,
         "X-Goog-FieldMask": "places.displayName,places.formattedAddress"
     }
-    data = {"textQuery": f"{query} India", "maxResultCount": 1, "languageCode": "en-IN"}
+    # Force search to Noida
+    data = {"textQuery": f"{query} in Noida, Uttar Pradesh, India", "maxResultCount": 1, "languageCode": "en-IN"}
+    
     try:
         response = requests.post(url, json=data, headers=headers)
         if response.status_code == 200:
             results = response.json().get("places", [])
             if results:
                 p = results[0]
-                return f"📍 FOUND: {p['displayName']['text']} at {p['formattedAddress']}"
+                name = p['displayName']['text']
+                address = p['formattedAddress']
+                
+                # --- NEW: Generate a Google Maps Search Link ---
+                # We format the name and address for a URL
+                search_query = f"{name} {address}".replace(" ", "+")
+                map_link = f"https://www.google.com/maps/search/?api=1&query={search_query}"
+                
+                # Return the string with a unique separator '| LINK:'
+                return f"📍 FOUND: {name} at {address} | LINK: {map_link}"
+                
         return f"📍 MAPS: No results for '{query}'"
     except Exception as e:
         return f"❌ MAPS ERROR: {str(e)}"
