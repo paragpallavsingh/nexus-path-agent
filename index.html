@@ -6,6 +6,13 @@
     <title>Intent-Execution AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in { animation: slideIn 0.3s ease-out forwards; }
+    </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col items-center p-6">
 
@@ -40,52 +47,78 @@
     </div>
 
     <script>
-        async function executeIntent() {
-            const input = document.getElementById('userInput').value;
-            const resultsDiv = document.getElementById('results');
-            const loading = document.getElementById('loading');
-            
-            if (!input) return;
-
-            loading.classList.remove('hidden');
-            resultsDiv.innerHTML = '';
-
-            try {
-                const response = await fetch('/execute', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ input: input })
-                });
-
-                const data = await response.json();
-                loading.classList.add('hidden');
-
-                if (data.execution_log) {
-                    data.execution_log.forEach(log => {
-                        const card = document.createElement('div');
-                        card.className = "bg-slate-800 border-l-4 border-blue-500 p-4 rounded-r-xl shadow-lg animate-fade-in";
-                        
-                        // Icon Logic
-                        let icon = "✅";
-                        if(log.includes("📍")) icon = "📍";
-                        if(log.includes("📅")) icon = "📅";
-                        if(log.includes("❌")) {
-                            icon = "⚠️";
-                            card.className = "bg-slate-800 border-l-4 border-red-500 p-4 rounded-r-xl opacity-80";
-                        }
-
-                        card.innerHTML = `<div class="flex items-center gap-3">
-                            <span class="text-xl">${icon}</span>
-                            <p class="text-slate-200">${log.replace(icon, '')}</p>
-                        </div>`;
-                        resultsDiv.appendChild(card);
-                    });
-                }
-            } catch (error) {
-                loading.classList.add('hidden');
-                alert("Error connecting to backend!");
-            }
+    // 1. Make the 'Enter' key work
+    document.getElementById('userInput').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            executeIntent();
         }
-    </script>
+    });
+
+    async function executeIntent() {
+        const inputField = document.getElementById('userInput');
+        const input = inputField.value;
+        const resultsDiv = document.getElementById('results');
+        const loading = document.getElementById('loading');
+        
+        if (!input) return;
+
+        // Clear input and show loading
+        console.log("Executing intent:", input); // Debug log
+        loading.classList.remove('hidden');
+        resultsDiv.innerHTML = '';
+        inputField.value = ''; // Clear box after sending
+
+        try {
+            const response = await fetch('/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ input: input })
+            });
+
+            const data = await response.json();
+            loading.classList.add('hidden');
+
+            if (data.execution_log) {
+                data.execution_log.forEach(log => {
+                    const card = document.createElement('div');
+                    let displayLog = log;
+                    let icon = "✅";
+                    let borderColor = "border-blue-500";
+
+                    if(log.includes("📍")) {
+                        icon = "📍";
+                        borderColor = "border-emerald-500";
+                    } 
+                    else if(log.includes("📅")) {
+                        icon = "📅";
+                        borderColor = "border-purple-500";
+                    }
+                    
+                    if(log.includes("❌")) {
+                        icon = "⚙️";
+                        borderColor = "border-amber-500";
+                        if(log.includes("403") || log.includes("Permission")) {
+                            displayLog = "Action Required: Please grant Calendar/Tasks permissions to sync.";
+                        } else {
+                            displayLog = "Syncing... This action will be retried.";
+                        }
+                    }
+
+                    card.className = `bg-slate-800 border-l-4 ${borderColor} p-4 rounded-r-xl shadow-lg transition-all hover:scale-[1.02] animate-fade-in`;
+                    card.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">${icon}</span>
+                            <p class="text-slate-200 font-medium">${displayLog.replace(icon, '')}</p>
+                        </div>`;
+                    resultsDiv.appendChild(card);
+                });
+            }
+        } catch (error) {
+            console.error("Fetch Error:", error);
+            loading.classList.add('hidden');
+            alert("Error: Could not reach the backend. Is uvicorn running?");
+        }
+    }
+</script>
 </body>
 </html>
