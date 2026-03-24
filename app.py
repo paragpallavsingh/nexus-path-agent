@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from vertexai.generative_models import GenerativeModel
 from googleapiclient.discovery import build
 from google.auth import default
+from googleapiclient.discovery import build
 from datetime import datetime, timedelta
 
 load_dotenv()
@@ -23,6 +24,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# This runs once when the server starts
+creds, _ = default(scopes=[
+    'https://www.googleapis.com/auth/tasks',
+    'https://www.googleapis.com/auth/calendar.events',
+    'https://www.googleapis.com/auth/cloud-platform'
+])
+
+tasks_service = build('tasks', 'v1', credentials=creds)
+cal_service = build('calendar', 'v3', credentials=creds)
 
 model = GenerativeModel(
     os.getenv("MODEL"),
