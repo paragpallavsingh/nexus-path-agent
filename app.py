@@ -1,6 +1,7 @@
 import os, vertexai, json, requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware  # Added for Frontend support
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from vertexai.generative_models import GenerativeModel
@@ -77,6 +78,11 @@ def create_calendar_event(summary):
         return f"📅 CALENDAR: Event '{summary}' scheduled for now."
     except Exception as e: return f"❌ CALENDAR FAILED: {str(e)}"
 
+
+@app.get("/")
+async def read_index():
+    return FileResponse('index.html')
+    
 @app.post("/execute")
 async def execute(request: UserInput):
     try:
