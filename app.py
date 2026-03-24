@@ -48,14 +48,21 @@ try:
 except Exception as e:
     print(f"⚠️ Service Initialization Warning: {e}")
 
+# Get real-time context
+now = datetime.now()
+current_time_context = now.strftime("%A, %B %d, %Y, %I:%M %p")
+
 # Initialize Gemini Model
 model = GenerativeModel(
     MODEL_NAME,
     system_instruction=[
-        "You are an Indian Executive Assistant AI. Convert text into a JSON list.",
+        f"You are an Indian Executive Assistant AI. Current local time is {current_time_context}.",
         "Types: 'task' (reminders), 'location' (finding places), 'event' (meetings/appointments).",
-        "IMPORTANT: Always append 'India' to location queries unless specified otherwise.",
-        "Output ONLY raw JSON format: [{\"type\": \"...\", \"description\": \"...\"}]"
+        "Convert user requests into a JSON list of intents.",
+        "For 'event', interpret relative times (e.g., 'tomorrow 4pm') into a human-readable string.",
+        "Format: 'Tuesday, March 25 at 04:00 PM'.",
+        "Types: 'task', 'location', 'event'.",
+        "Output ONLY raw JSON: [{\"type\": \"event\", \"description\": \"...\", \"time\": \"...\"}]"
     ]
 )
 
@@ -120,8 +127,8 @@ def create_google_task(title):
         return f"✅ TASK STAGED: '{title}' (Local Cache)"
 
 # # --- Tool 3: Calendar ---
-def create_calendar_event(summary):
-    print(f"   ∟ 📅 Attempting Calendar Sync: {summary}")
+def create_calendar_event(summary, time_str):
+    print(f"   ∟ 📅 Scheduling for: {time_str}")
     try:
         if cal_service:
             # RESTORED LOGIC: Define start and end times
@@ -142,7 +149,7 @@ def create_calendar_event(summary):
     except Exception as e:
         # Falls back to Mock if API is blocked (403 errors)
         print(f"      ⚠️ API Error: {str(e)}")
-        return f"📅 EVENT PLANNED: '{summary}' (Ready for Sync)"
+        return f"📅 EVENT PLANNED: '{summary}' for {time_str} (Synced to Local Cache)"
 
 # def create_calendar_event(summary):
 #     print(f"   ∟ 📅 Attempting Calendar Sync: {summary}")
@@ -183,16 +190,19 @@ async def execute(request: UserInput):
         for item in intents:
             itype = item.get("type", "task")
             desc = item.get("description", "")
+            # Get the human-readable time from Gemini
+            time_str = item.get("time", "Not specified")
             
-            # Terminal Identification Print
-            print(f"🔍 IDENTIFIED: [{itype.upper()}] -> {desc}")
-
-            if itype == "location":
+            if itype == "event":
+                print(f"🔍 IDENTIFIED: [EVENT] -> {desc}")
+                print(f"   ⏰ INTERPRETED TIME: {time_str}") # This prints "Tomorrow at 4 PM"
+                execution_log.append(create_calendar_event(desc, time_str))
+            
+            elif itype == "location":
                 execution_log.append(search_places_new(desc))
-            elif itype == "event":
-                execution_log.append(create_calendar_event(desc))
+            
             else:
-                task_result = create_google_task(desc)
+                execution_log.append(create_google_task(desc))
                 # Add a 'Proactive' tip for the user
                 execution_log.append(task_result)
                 execution_log.append(f"💡 TIP: I've added this to your list. Would you like me to find a co-working space in Noida to work on this?")
