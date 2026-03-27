@@ -107,8 +107,8 @@ async def execute(request: UserInput):
     print(f"\n--- 🧠 PRIMARY AGENT START: '{request.input}' ---")
     try:
         # 1. ORCHESTRATION: Gemini decides the plan
-        ai_resp = model.generate_content(request.input)
-        response_data = json.loads(ai_resp.text.replace("```json", "").replace("```", "").strip())
+        clean_json = ai_resp.text.strip().lstrip("```json").rstrip("```").strip()
+        response_data = json.loads(clean_json)
         
         thoughts = response_data.get("thoughts", "Coordinating specialized agents...")
         intents = response_data.get("intents", [])
@@ -123,8 +123,7 @@ async def execute(request: UserInput):
             if "search" in itype or "location" in itype or "find" in itype:
                 # This triggers the Researcher Agent (Maps)
                 execution_log.append(search_places_tool(desc)) 
-            
-            if "calendar" in itype or "meeting" in itype or "schedule" in itype:
+            elif "calendar" in itype or "meeting" in itype or "schedule" in itype:
                 # This triggers the Scheduler Agent (Calendar)
                 execution_log.append(calendar_tool(desc, item.get("time", "today")))
             else:
