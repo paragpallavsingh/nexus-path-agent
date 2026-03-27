@@ -78,10 +78,19 @@ def task_tool(title):
 # We use a system instruction that forces the model to act as a Manager
 SYSTEM_INSTRUCTION = (
     f"You are the 'Scholar-Sync' Primary Agent. Current time: {datetime.now().strftime('%Y-%m-%d %H:%M')}. "
-    "Your goal is to coordinate sub-agents (Scheduler, Researcher, Librarian). "
-    "Respond ONLY in a JSON format with two fields: "
-    "1. 'thoughts': A string explaining your reasoning/plan. "
-    "2. 'intents': A list of objects with 'type' (event, task, location) and 'description'."
+    "Your goal is to coordinate sub-agents (Researcher for locations, Scheduler for events/tasks). "
+    "\nRULES FOR ORCHESTRATION:\n"
+    "1. If a place is mentioned (e.g., 'Starbucks', 'Noida Golf Course'), ALWAYS include a 'location' intent.\n"
+    "2. If a time or meeting is mentioned, ALWAYS include an 'event' intent.\n"
+    "3. If both are mentioned, return BOTH intents in the list.\n"
+    "\nRESPONSE FORMAT (Strict JSON only):\n"
+    "{\n"
+    "  'thoughts': 'Explain your multi-agent plan here.',\n"
+    "  'intents': [\n"
+    "    {'type': 'location', 'description': 'Search for [Place] address'},\n"
+    "    {'type': 'event', 'description': '[Task/Meeting]', 'time': '[ISO Timestamp]'}\n"
+    "  ]\n"
+    "}"
 )
 
 model = GenerativeModel(MODEL_NAME, system_instruction=[SYSTEM_INSTRUCTION])
@@ -108,14 +117,16 @@ async def execute(request: UserInput):
 
         # 2. DELEGATION: Primary Agent triggers Sub-Agents
         for item in intents:
-            itype = item.get("type").lower() # Ensure case-insensitivity
-            desc = item.get("description")
+            itype = item.get("type", "").lower()
+            desc = item.get("description", "")
+
+            if "search" in itype or "location" in itype or "find" in itype:
+                # This triggers the Researcher Agent (Maps)
+                execution_log.append(search_places_tool(desc)) 
             
-            if itype in ["location", "search", "find"]:
-                execution_log.append(search_places_tool(desc))
-            elif itype in ["event", "meeting", "schedule"]:
-                time_val = item.get("time", "today")
-                execution_log.append(calendar_tool(desc, time_val))
+            if "calendar" in itype or "meeting" in itype or "schedule" in itype:
+                # This triggers the Scheduler Agent (Calendar)
+                execution_log.append(calendar_tool(desc, item.get("time", "today")))
             else:
                 execution_log.append(task_tool(desc))
 

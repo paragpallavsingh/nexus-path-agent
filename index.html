@@ -10,9 +10,10 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade { animation: fadeIn 0.4s ease-out forwards; }
         .thought-gradient { background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%); }
+        .map-glow { box-shadow: 0 0 20px rgba(16, 185, 129, 0.1); }
     </style>
 </head>
-<body class="bg-slate-950 text-white min-h-screen p-4 md:p-10 font-sans">
+<body class="bg-slate-950 text-white min-h-screen p-4 md:p-10 font-sans tracking-tight">
 
     <div class="max-w-3xl mx-auto">
         <header class="text-center mb-10">
@@ -22,13 +23,13 @@
             <h1 class="text-5xl font-extrabold tracking-tight text-white mb-3">
                 Scholar<span class="text-blue-500">-Sync</span>
             </h1>
-            <p class="text-slate-400">Coordinating Gemini, MCP Tools, and AlloyDB for Student Success.</p>
+            <p class="text-slate-400 font-medium">Coordinating Gemini, MCP Tools, and AlloyDB for Student Success.</p>
         </header>
 
         <div class="bg-slate-900 p-2 rounded-2xl shadow-2xl border border-slate-800 mb-8 focus-within:border-blue-500/50 transition-all">
             <div class="flex gap-2">
                 <input type="text" id="userInput" 
-                    placeholder="e.g., I have a Physics test Friday, find a quiet cafe in Noida to study..." 
+                    placeholder="e.g., Meet at Noida Golf Course at 4 PM today..." 
                     class="flex-1 bg-transparent border-none rounded-xl px-5 py-4 focus:outline-none text-white placeholder:text-slate-600 text-lg">
                 <button onclick="executeIntent()" id="sendBtn"
                     class="bg-blue-600 hover:bg-blue-500 px-8 py-4 rounded-xl font-bold transition-all flex items-center gap-3 active:scale-95">
@@ -45,7 +46,7 @@
 
         <div id="thought-container" class="hidden mb-8 animate-fade">
             <div class="thought-gradient border border-slate-800 rounded-2xl p-6 shadow-inner">
-                <div class="flex items-center gap-2 mb-3 text-blue-400 text-xs font-black uppercase tracking-tighter">
+                <div class="flex items-center gap-2 mb-3 text-blue-400 text-xs font-black uppercase tracking-widest">
                     <i class="fas fa-brain"></i> Primary Agent Reasoning
                 </div>
                 <p id="thought-text" class="text-slate-300 italic leading-relaxed text-sm md:text-base"></p>
@@ -56,7 +57,6 @@
     </div>
 
     <script>
-    // Handle Enter Key
     document.getElementById('userInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') executeIntent();
     });
@@ -71,7 +71,6 @@
         
         if (!input) return;
 
-        // Reset UI
         loading.classList.remove('hidden');
         thoughtContainer.classList.add('hidden');
         resultsDiv.innerHTML = '';
@@ -87,46 +86,77 @@
             const data = await response.json();
             loading.classList.add('hidden');
 
-            // 1. Display Reasoning
             if (data.thoughts) {
                 thoughtContainer.classList.remove('hidden');
                 thoughtText.innerText = data.thoughts;
             }
 
-            // 2. Display Execution Logs (Cards)
             if (data.execution_log) {
                 data.execution_log.forEach(log => {
                     const card = document.createElement('div');
                     let icon = "⚙️";
                     let borderColor = "border-slate-700";
-                    let displayLog = log;
+                    let accentColor = "text-slate-400";
+                    let content = log;
 
-                    // Dynamic Styling based on tool output
-                    if(log.includes("📍")) { icon = "📍"; borderColor = "border-emerald-500"; }
-                    if(log.includes("📅")) { icon = "📅"; borderColor = "border-purple-500"; }
-                    if(log.includes("✅")) { icon = "✅"; borderColor = "border-blue-500"; }
-
-                    card.className = `bg-slate-900 border-l-4 ${borderColor} p-5 rounded-r-2xl shadow-lg animate-fade flex items-start gap-4 hover:bg-slate-800/50 transition-colors`;
-                    
-                    // Handle Map Links if present
-                    if(log.includes("| LINK:")) {
-                        const parts = log.split("| LINK:");
-                        displayLog = `${parts[0]} <br><a href="${parts[1]}" target="_blank" class="text-blue-400 text-xs font-bold mt-2 inline-block hover:underline underline-offset-4">VIEW ON MAP →</a>`;
+                    // 1. Detect Agent Type and Set Styling
+                    if(log.includes("📍")) { 
+                        icon = "location_on"; 
+                        borderColor = "border-emerald-500"; 
+                        accentColor = "text-emerald-400";
+                    } else if(log.includes("📅")) { 
+                        icon = "calendar_today"; 
+                        borderColor = "border-purple-500"; 
+                        accentColor = "text-purple-400";
+                    } else if(log.includes("✅")) { 
+                        icon = "check_circle"; 
+                        borderColor = "border-blue-500"; 
+                        accentColor = "text-blue-400";
                     }
 
+                    // 2. Specialized Map Link Handling
+                    let actionButton = "";
+                    if(log.includes("| LINK:")) {
+                        const parts = log.split("| LINK:");
+                        const address = parts[0].replace('📍 FOUND:', '').trim();
+                        const mapUrl = parts[1].trim();
+                        
+                        content = address;
+                        actionButton = `
+                            <a href="${mapUrl}" target="_blank" class="mt-4 flex items-center justify-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 py-2 rounded-lg text-sm font-bold transition-all">
+                                <i class="fas fa-map-marked-alt"></i> Open Google Maps
+                            </a>
+                        `;
+                    } else {
+                        // Clean up other icons for text display
+                        content = content.replace(/[📍📅✅]/g, '').trim();
+                    }
+
+                    // 3. Build the Card
+                    card.className = `bg-slate-900 border-l-4 ${borderColor} p-5 rounded-r-2xl shadow-lg animate-fade flex flex-col gap-1 hover:bg-slate-800/40 transition-all map-glow`;
                     card.innerHTML = `
-                        <span class="text-2xl mt-1">${icon}</span>
-                        <div>
-                            <p class="text-slate-200 font-medium leading-tight">${displayLog.replace(icon, '').replace('📍 FOUND:', '').trim()}</p>
-                            <span class="text-[10px] text-slate-500 uppercase mt-2 block tracking-widest">Sub-Agent Confirmed</span>
-                        </div>`;
+                        <div class="flex items-start gap-4">
+                            <span class="material-icons ${accentColor} text-2xl mt-1">
+                                <i class="fas ${icon === 'location_on' ? 'fa-map-pin' : icon === 'calendar_today' ? 'fa-calendar-alt' : 'fa-check-circle'}"></i>
+                            </span>
+                            <div class="flex-1">
+                                <p class="text-slate-200 font-semibold leading-snug text-lg">${content}</p>
+                                <div class="flex items-center gap-2 mt-2">
+                                    <span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Sub-Agent Confirmed</span>
+                                    <div class="h-1 w-1 rounded-full bg-slate-700"></div>
+                                    <span class="text-[10px] text-slate-500 uppercase tracking-widest">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                </div>
+                                ${actionButton}
+                            </div>
+                        </div>
+                    `;
                     resultsDiv.appendChild(card);
                 });
             }
         } catch (error) {
             loading.classList.add('hidden');
             console.error("Agent Error:", error);
-            alert("Orchestration failed. Check if backend is running.");
+            alert("Orchestration failed. Check backend.");
         }
     }
     </script>
