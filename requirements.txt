@@ -1,7 +1,14 @@
 fastapi
 uvicorn
-vertexai
+python-dotenv
+# AI & Google APIs
+google-cloud-aiplatform
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
-python-dotenv
+# Database & Vector Memory
+sqlalchemy
+psycopg2-binary
+pgvector
+# Networking
+requests

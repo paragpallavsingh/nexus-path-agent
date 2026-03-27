@@ -3,55 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Intent-Execution AI</title>
+    <title>Scholar-Sync | Multi-Agent AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-    @keyframes slideIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-fade-in { animation: slideIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.4s ease-out forwards; }
+        .thought-gradient { background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%); }
     </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center p-6">
+<body class="bg-slate-950 text-white min-h-screen p-4 md:p-10 font-sans">
 
-    <div class="w-full max-w-2xl mt-10">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
-                Intent AI Agent
+    <div class="max-w-3xl mx-auto">
+        <header class="text-center mb-10">
+            <div class="inline-block px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold mb-4 tracking-widest uppercase">
+                Multi-Agent System Orchestrator
+            </div>
+            <h1 class="text-5xl font-extrabold tracking-tight text-white mb-3">
+                Scholar<span class="text-blue-500">-Sync</span>
             </h1>
-            <p class="text-slate-400 mt-2">Type your request, and I'll execute it across Google Cloud.</p>
+            <p class="text-slate-400">Coordinating Gemini, MCP Tools, and AlloyDB for Student Success.</p>
         </header>
 
-        <div class="bg-slate-800 p-4 rounded-2xl shadow-xl border border-slate-700 mb-6">
+        <div class="bg-slate-900 p-2 rounded-2xl shadow-2xl border border-slate-800 mb-8 focus-within:border-blue-500/50 transition-all">
             <div class="flex gap-2">
                 <input type="text" id="userInput" 
-                    placeholder="Find pizza in Noida and remind me to eat..." 
-                    class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white">
+                    placeholder="e.g., I have a Physics test Friday, find a quiet cafe in Noida to study..." 
+                    class="flex-1 bg-transparent border-none rounded-xl px-5 py-4 focus:outline-none text-white placeholder:text-slate-600 text-lg">
                 <button onclick="executeIntent()" id="sendBtn"
-                    class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2">
+                    class="bg-blue-600 hover:bg-blue-500 px-8 py-4 rounded-xl font-bold transition-all flex items-center gap-3 active:scale-95">
                     <span>Execute</span>
-                    <i class="fas fa-paper-plane text-sm"></i>
+                    <i class="fas fa-bolt text-yellow-300"></i>
                 </button>
             </div>
         </div>
 
-        <div id="loading" class="hidden text-center py-4">
-            <div class="animate-spin inline-block w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full mb-2"></div>
-            <p class="text-slate-400">Processing with Gemini...</p>
+        <div id="loading" class="hidden text-center py-10">
+            <div class="animate-spin inline-block w-8 h-8 border-[3px] border-blue-500 border-t-transparent rounded-full mb-4"></div>
+            <p class="text-blue-400 font-medium animate-pulse">Primary Agent is orchestrating sub-agents...</p>
         </div>
 
-        <div id="results" class="space-y-4">
+        <div id="thought-container" class="hidden mb-8 animate-fade">
+            <div class="thought-gradient border border-slate-800 rounded-2xl p-6 shadow-inner">
+                <div class="flex items-center gap-2 mb-3 text-blue-400 text-xs font-black uppercase tracking-tighter">
+                    <i class="fas fa-brain"></i> Primary Agent Reasoning
+                </div>
+                <p id="thought-text" class="text-slate-300 italic leading-relaxed text-sm md:text-base"></p>
             </div>
+        </div>
+
+        <div id="results" class="space-y-4"></div>
     </div>
 
     <script>
-    // 1. Make the 'Enter' key work
-    document.getElementById('userInput').addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            executeIntent();
-        }
+    // Handle Enter Key
+    document.getElementById('userInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') executeIntent();
     });
 
     async function executeIntent() {
@@ -59,12 +66,14 @@
         const input = inputField.value;
         const resultsDiv = document.getElementById('results');
         const loading = document.getElementById('loading');
+        const thoughtContainer = document.getElementById('thought-container');
+        const thoughtText = document.getElementById('thought-text');
         
         if (!input) return;
 
-        // Clear input and show loading
-        console.log("Executing intent:", input);
+        // Reset UI
         loading.classList.remove('hidden');
+        thoughtContainer.classList.add('hidden');
         resultsDiv.innerHTML = '';
         inputField.value = '';
 
@@ -78,70 +87,46 @@
             const data = await response.json();
             loading.classList.add('hidden');
 
+            // 1. Display Reasoning
+            if (data.thoughts) {
+                thoughtContainer.classList.remove('hidden');
+                thoughtText.innerText = data.thoughts;
+            }
+
+            // 2. Display Execution Logs (Cards)
             if (data.execution_log) {
                 data.execution_log.forEach(log => {
                     const card = document.createElement('div');
+                    let icon = "⚙️";
+                    let borderColor = "border-slate-700";
                     let displayLog = log;
-                    let icon = "✅";
-                    let borderColor = "border-blue-500";
 
-                    // 🗺️ Map Logic
-                    if(log.includes("📍")) {
-                        icon = "📍";
-                        borderColor = "border-emerald-500";
-                        
-                        // Check if the backend sent a link
-                        if(log.includes("| LINK:")) {
-                            const parts = log.split("| LINK:");
-                            // Get the text before the link
-                            const locationInfo = parts[0].replace("📍 FOUND:", "").trim();
-                            // Get the URL itself
-                            const mapUrl = parts[1].trim();
-                            
-                            // Update displayLog with an HTML anchor tag (link)
-                            displayLog = `${locationInfo} <br> <a href="${mapUrl}" target="_blank" class="text-blue-400 underline text-xs mt-2 inline-block font-bold">📍 Open in Google Maps →</a>`;
-                        }
-                    }
-                    // 📅 Calendar Logic
-                    else if(log.includes("📅")) {
-                        icon = "📅";
-                        borderColor = "border-purple-500";
-                    }
-                    // 💡 Tip Logic
-                    else if(log.includes("PROACTIVE_TIP:")) {
-                        icon = "💡";
-                        borderColor = "border-amber-400";
-                        displayLog = log.replace("PROACTIVE_TIP:", "Suggestion:");
-                    }
+                    // Dynamic Styling based on tool output
+                    if(log.includes("📍")) { icon = "📍"; borderColor = "border-emerald-500"; }
+                    if(log.includes("📅")) { icon = "📅"; borderColor = "border-purple-500"; }
+                    if(log.includes("✅")) { icon = "✅"; borderColor = "border-blue-500"; }
+
+                    card.className = `bg-slate-900 border-l-4 ${borderColor} p-5 rounded-r-2xl shadow-lg animate-fade flex items-start gap-4 hover:bg-slate-800/50 transition-colors`;
                     
-                    // 🛡️ Error/Sandbox Handling Logic
-                    if(log.includes("❌")) {
-                        if(log.includes("403") || log.includes("Permission") || log.includes("Blocked")) {
-                            icon = "✅"; 
-                            borderColor = "border-emerald-500"; 
-                            // Cleans up the "Failed" text for the judges
-                            displayLog = log.replace("❌", "").split(":")[0].replace("FAILED", "") + " (Staged for sync)";
-                        } else {
-                            icon = "⚙️";
-                            borderColor = "border-amber-500";
-                            displayLog = "Processing... Action queued.";
-                        }
+                    // Handle Map Links if present
+                    if(log.includes("| LINK:")) {
+                        const parts = log.split("| LINK:");
+                        displayLog = `${parts[0]} <br><a href="${parts[1]}" target="_blank" class="text-blue-400 text-xs font-bold mt-2 inline-block hover:underline underline-offset-4">VIEW ON MAP →</a>`;
                     }
 
-                    // Create the UI Card
-                    card.className = `bg-slate-800 border-l-4 ${borderColor} p-4 rounded-r-xl shadow-lg transition-all hover:scale-[1.02] animate-fade-in`;
                     card.innerHTML = `
-                        <div class="flex items-center gap-3">
-                            <span class="text-xl">${icon}</span>
-                            <p class="text-slate-200 font-medium">${displayLog.replace(icon, '').trim()}</p>
+                        <span class="text-2xl mt-1">${icon}</span>
+                        <div>
+                            <p class="text-slate-200 font-medium leading-tight">${displayLog.replace(icon, '').replace('📍 FOUND:', '').trim()}</p>
+                            <span class="text-[10px] text-slate-500 uppercase mt-2 block tracking-widest">Sub-Agent Confirmed</span>
                         </div>`;
                     resultsDiv.appendChild(card);
                 });
             }
         } catch (error) {
-            console.error("Fetch Error:", error);
             loading.classList.add('hidden');
-            alert("Connection Error: Is the backend running?");
+            console.error("Agent Error:", error);
+            alert("Orchestration failed. Check if backend is running.");
         }
     }
     </script>
