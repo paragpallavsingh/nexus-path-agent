@@ -107,6 +107,10 @@ async def execute(request: UserInput):
     print(f"\n--- 🧠 PRIMARY AGENT START: '{request.input}' ---")
     try:
         # 1. ORCHESTRATION: Gemini decides the plan
+        # MISSING LINE RE-ADDED BELOW:
+        ai_resp = model.generate_content(request.input) 
+        
+        # Robust JSON cleaning
         clean_json = ai_resp.text.strip().lstrip("```json").rstrip("```").strip()
         response_data = json.loads(clean_json)
         
@@ -120,29 +124,22 @@ async def execute(request: UserInput):
             itype = item.get("type", "").lower()
             desc = item.get("description", "")
 
-            if "search" in itype or "location" in itype or "find" in itype:
-                # This triggers the Researcher Agent (Maps)
+            # Using elif to prevent "double-firing" as a task
+            if any(key in itype for key in ["search", "location", "find"]):
                 execution_log.append(search_places_tool(desc)) 
-            elif "calendar" in itype or "meeting" in itype or "schedule" in itype:
-                # This triggers the Scheduler Agent (Calendar)
+            elif any(key in itype for key in ["calendar", "meeting", "schedule", "event"]):
                 execution_log.append(calendar_tool(desc, item.get("time", "today")))
             else:
                 execution_log.append(task_tool(desc))
 
-        # 3. PERSISTENCE (Requirement: AlloyDB/Structured Data)
-        
-        print(f"📝 Logging workflow to AlloyDB for Student Context...")
-
-        # --- NEW: ALLOYDB PERSISTENCE LAYER ---
+        # 3. PERSISTENCE
+        print(f"📝 Logging workflow to AlloyDB...")
         try:
             from sqlalchemy import create_engine, text
-            import uuid
-            
             db_url = os.getenv("DATABASE_URL")
             engine = create_engine(db_url)
             
             with engine.connect() as conn:
-                # Insert the interaction log
                 query = text("""
                     INSERT INTO scholar_logs (user_query, agent_thoughts, executed_intents)
                     VALUES (:query, :thoughts, :intents)
@@ -165,7 +162,7 @@ async def execute(request: UserInput):
 
     except Exception as e:
         print(f"❌ ORCHESTRATION ERROR: {e}")
-        return {"status": "error", "message": "The Dean is busy. Try again."}
+        return {"status": "error", "message": f"Orchestration failed: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn
