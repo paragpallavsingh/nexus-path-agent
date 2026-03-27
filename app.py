@@ -55,7 +55,7 @@ def search_places_tool(query):
             if results:
                 p = results[0]
                 name, addr = p['displayName']['text'], p['formattedAddress']
-                link = f"https://www.google.com/maps/search/?api=1&query={name.replace(' ', '+')}"
+                link = f"https://www.google.com/maps/search/?api=1&query={name.replace(' ', '+')}+{addr.replace(' ', '+')}"
                 return f"📍 FOUND: {name} at {addr} | LINK: {link}"
         return f"📍 MAPS: No results for '{query}'"
     except Exception as e:
@@ -77,18 +77,20 @@ def task_tool(title):
 
 # We use a system instruction that forces the model to act as a Manager
 SYSTEM_INSTRUCTION = (
-    f"You are the 'Scholar-Sync' Primary Agent. Current time: {datetime.now().strftime('%Y-%m-%d %H:%M')}. "
-    "Your goal is to coordinate sub-agents (Researcher for locations, Scheduler for events/tasks). "
-    "\nRULES FOR ORCHESTRATION:\n"
-    "1. If a place is mentioned (e.g., 'Starbucks', 'Noida Golf Course'), ALWAYS include a 'location' intent.\n"
-    "2. If a time or meeting is mentioned, ALWAYS include an 'event' intent.\n"
-    "3. If both are mentioned, return BOTH intents in the list.\n"
+    f"You are the 'Nexus-Path' Orchestrator. Current time: {datetime.now().strftime('%Y-%m-%d %H:%M')}. "
+    "Your mission is to unify Spatial (Maps), Temporal (Calendar), and Actionable (Tasks) data. "
+    "\nCORE ORCHESTRATION RULES:\n"
+    "1. SPATIAL: If any venue, city, or place is mentioned, include a 'location' intent for the Researcher Agent.\n"
+    "2. TEMPORAL: If any time, date, or duration is mentioned, include an 'event' intent for the Scheduler Agent.\n"
+    "3. ACTIONABLE: If any verb or goal is mentioned (e.g., 'buy', 'meet', 'study'), include a 'task' intent for the Coordinator Agent.\n"
+    "4. MULTI-INTENT: Always decompose complex requests into multiple intents. If they want to 'meet at a cafe at 5pm', return BOTH location and event.\n"
     "\nRESPONSE FORMAT (Strict JSON only):\n"
     "{\n"
-    "  'thoughts': 'Explain your multi-agent plan here.',\n"
+    "  'thoughts': 'A manager-level summary of how sub-agents will fulfill this request.',\n"
     "  'intents': [\n"
-    "    {'type': 'location', 'description': 'Search for [Place] address'},\n"
-    "    {'type': 'event', 'description': '[Task/Meeting]', 'time': '[ISO Timestamp]'}\n"
+    "    {'type': 'location', 'description': 'Search for [Place] in Noida'},\n"
+    "    {'type': 'event', 'description': '[Meeting/Event Name]', 'time': '[ISO Timestamp]'},\n"
+    "    {'type': 'task', 'description': '[To-do Action Item]'}\n"
     "  ]\n"
     "}"
 )
@@ -123,13 +125,17 @@ async def execute(request: UserInput):
         for item in intents:
             itype = item.get("type", "").lower()
             desc = item.get("description", "")
-
-            # Using elif to prevent "double-firing" as a task
-            if any(key in itype for key in ["search", "location", "find"]):
-                execution_log.append(search_places_tool(desc)) 
-            elif any(key in itype for key in ["calendar", "meeting", "schedule", "event"]):
+            
+            # Check for Location (Researcher)
+            if any(k in itype for k in ["location", "search", "find"]):
+                execution_log.append(search_places_tool(desc))
+                
+            # Check for Event (Scheduler)
+            if any(k in itype for k in ["event", "meeting", "schedule", "calendar"]):
                 execution_log.append(calendar_tool(desc, item.get("time", "today")))
-            else:
+                
+            # Check for Task (Coordinator)
+            if itype == "task":
                 execution_log.append(task_tool(desc))
 
         # 3. PERSISTENCE

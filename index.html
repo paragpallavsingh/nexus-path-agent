@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scholar-Sync | Multi-Agent AI</title>
+    <title>Nexus-Path | Multi-Agent Orchestrator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -21,15 +21,15 @@
                 Multi-Agent System Orchestrator
             </div>
             <h1 class="text-5xl font-extrabold tracking-tight text-white mb-3">
-                Scholar<span class="text-blue-500">-Sync</span>
+                Nexus<span class="text-blue-500">-Path</span> <i class="fas fa-compass text-blue-500 text-4xl ml-2"></i>
             </h1>
-            <p class="text-slate-400 font-medium">Coordinating Gemini, MCP Tools, and AlloyDB for Student Success.</p>
+            <p class="text-slate-400 font-medium tracking-wide">Spatial, Temporal, and Actionable AI Coordination.</p>
         </header>
 
         <div class="bg-slate-900 p-2 rounded-2xl shadow-2xl border border-slate-800 mb-8 focus-within:border-blue-500/50 transition-all">
             <div class="flex gap-2">
                 <input type="text" id="userInput" 
-                    placeholder="e.g., Meet at Noida Golf Course at 4 PM today..." 
+                    placeholder="e.g., Study at a cafe in Sector 62 at 2 PM tomorrow..." 
                     class="flex-1 bg-transparent border-none rounded-xl px-5 py-4 focus:outline-none text-white placeholder:text-slate-600 text-lg">
                 <button onclick="executeIntent()" id="sendBtn"
                     class="bg-blue-600 hover:bg-blue-500 px-8 py-4 rounded-xl font-bold transition-all flex items-center gap-3 active:scale-95">
@@ -42,6 +42,13 @@
         <div id="loading" class="hidden text-center py-10">
             <div class="animate-spin inline-block w-8 h-8 border-[3px] border-blue-500 border-t-transparent rounded-full mb-4"></div>
             <p class="text-blue-400 font-medium animate-pulse">Primary Agent is orchestrating sub-agents...</p>
+        </div>
+
+        <div id="query-display" class="hidden mb-4 animate-fade">
+            <div class="bg-slate-800/50 border border-slate-700 rounded-2xl px-6 py-3 flex items-center gap-3">
+                <span class="text-blue-500 text-xs font-black uppercase tracking-widest flex-none">User Query</span>
+                <p id="query-text" class="text-slate-400 text-sm italic truncate"></p>
+            </div>
         </div>
 
         <div id="thought-container" class="hidden mb-8 animate-fade">
@@ -64,6 +71,8 @@
     async function executeIntent() {
         const inputField = document.getElementById('userInput');
         const input = inputField.value;
+        const queryDisplay = document.getElementById('query-display');
+        const queryText = document.getElementById('query-text');
         const resultsDiv = document.getElementById('results');
         const loading = document.getElementById('loading');
         const thoughtContainer = document.getElementById('thought-container');
@@ -73,6 +82,8 @@
 
         loading.classList.remove('hidden');
         thoughtContainer.classList.add('hidden');
+        queryText.innerText = `"${input}"`;
+        queryDisplay.classList.remove('hidden');
         resultsDiv.innerHTML = '';
         inputField.value = '';
 
