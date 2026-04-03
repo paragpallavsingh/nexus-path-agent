@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from vertexai.generative_models import GenerativeModel, Tool
 from googleapiclient.discovery import build
 from google.auth import default
+from google.oauth2.credentials import Credentials
 from datetime import datetime, timedelta
 
 # Load environment variables
@@ -62,34 +63,42 @@ def search_places_tool(query):
         return f"❌ MAPS ERROR: {str(e)}"
 
 def calendar_tool(summary, time_str):
-    """Sub-Agent: Scheduler - Integrates with Google Calendar API"""
-    print(f"  ∟ 📅 Scheduler Agent: Booking '{summary}' for {time_str}")
+    """Sub-Agent: Scheduler - Using Official OAuth Token"""
+    print(f"   ∟ 📅 Scheduler Agent: Booking '{summary}' for {time_str}")
+    
+    # 1. Define the scopes (Must match what you used in auth_final.py)
+    SCOPES = ['https://www.googleapis.com/auth/calendar']
+    
     try:
-        # Build the service using ADC
-        creds, _ = default(scopes=['https://www.googleapis.com/auth/calendar.events'])
+        # 2. Check if token exists
+        if not os.path.exists('token.json'):
+            raise Exception("token.json not found. Run auth_final.py first.")
+
+        # 3. Load credentials FROM THE FILE, not from ADC
+        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
         service = build('calendar', 'v3', credentials=creds)
 
-        # Create the event object
+        # 4. Create the event object
         event = {
             'summary': summary,
             'description': 'Created by Nexus-Path Multi-Agent System',
             'start': {
-                'dateTime': time_str, # Model provides ISO string
+                'dateTime': time_str,
                 'timeZone': 'Asia/Kolkata',
             },
             'end': {
-                # Default to 1 hour duration
                 'dateTime': (datetime.fromisoformat(time_str) + timedelta(hours=1)).isoformat(),
                 'timeZone': 'Asia/Kolkata',
             },
         }
 
+        # 5. Execute
         event_result = service.events().insert(calendarId='primary', body=event).execute()
         return f"📅 CALENDAR: Confirmed! Event created: {event_result.get('htmlLink')}"
 
     except Exception as e:
         print(f"❌ Calendar API Error: {e}")
-        return f"📅 CALENDAR: Failed to book (using fallback). Error: {str(e)}"
+        return f"📅 CALENDAR: Failed to book. Error: {str(e)}"
 
 def task_tool(title):
     """Sub-Agent: Coordinator - Manages Google Tasks"""
