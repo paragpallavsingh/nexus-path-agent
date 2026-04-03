@@ -62,12 +62,34 @@ def search_places_tool(query):
         return f"❌ MAPS ERROR: {str(e)}"
 
 def calendar_tool(summary, time_str):
-    """Sub-Agent: Scheduler - Manages Google Calendar"""
+    """Sub-Agent: Scheduler - Integrates with Google Calendar API"""
+    print(f"  ∟ 📅 Scheduler Agent: Booking '{summary}' for {time_str}")
     try:
-        # Mock logic for demo/sandbox stability
-        return f"📅 CALENDAR: '{summary}' planned for {time_str} (Staged in AlloyDB)"
+        # Build the service using ADC
+        creds, _ = default(scopes=['https://www.googleapis.com/auth/calendar.events'])
+        service = build('calendar', 'v3', credentials=creds)
+
+        # Create the event object
+        event = {
+            'summary': summary,
+            'description': 'Created by Nexus-Path Multi-Agent System',
+            'start': {
+                'dateTime': time_str, # Model provides ISO string
+                'timeZone': 'Asia/Kolkata',
+            },
+            'end': {
+                # Default to 1 hour duration
+                'dateTime': (datetime.fromisoformat(time_str) + timedelta(hours=1)).isoformat(),
+                'timeZone': 'Asia/Kolkata',
+            },
+        }
+
+        event_result = service.events().insert(calendarId='primary', body=event).execute()
+        return f"📅 CALENDAR: Confirmed! Event created: {event_result.get('htmlLink')}"
+
     except Exception as e:
-        return f"❌ CALENDAR ERROR: {str(e)}"
+        print(f"❌ Calendar API Error: {e}")
+        return f"📅 CALENDAR: Failed to book (using fallback). Error: {str(e)}"
 
 def task_tool(title):
     """Sub-Agent: Coordinator - Manages Google Tasks"""
