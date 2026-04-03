@@ -3,3 +3,7 @@ __pycache__/
 .env
 *.pyc
 .pytest_cache/
+client_secret.json
+token.json
+venv/
+__pycache__/
