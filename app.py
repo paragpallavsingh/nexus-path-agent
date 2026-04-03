@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from vertexai.generative_models import GenerativeModel, Tool
 from googleapiclient.discovery import build
+import google.auth
 from google.auth import default
 from google.oauth2.credentials import Credentials
 from datetime import datetime, timedelta
@@ -63,38 +64,33 @@ def search_places_tool(query):
         return f"❌ MAPS ERROR: {str(e)}"
 
 def calendar_tool(summary, time_str):
-    """Sub-Agent: Scheduler - Using Official OAuth Token"""
-    print(f"   ∟ 📅 Scheduler Agent: Booking '{summary}' for {time_str}")
+    """Sub-Agent: Scheduler - Token-less Service Account Auth"""
     
-    # 1. Define the scopes (Must match what you used in auth_final.py)
+    TARGET_CALENDAR_ID = "c6bd9b50ec7ee4626ef30cf1f43b00e7c2b460cc53d923506bd0c2fb58d664b1@group.calendar.google.com"
+    
+    print(f"   ∟ 📅 Scheduler Agent: Securely booking '{summary}' via Service Account")
+    
+    # Define the scope
     SCOPES = ['https://www.googleapis.com/auth/calendar']
     
     try:
-        # 2. Check if token exists
-        if not os.path.exists('token.json'):
-            raise Exception("token.json not found. Run auth_final.py first.")
-
-        # 3. Load credentials FROM THE FILE, not from ADC
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+        creds, project = google.auth.default(scopes=SCOPES)
         service = build('calendar', 'v3', credentials=creds)
-
-        # 4. Create the event object
+	
         event = {
             'summary': summary,
             'description': 'Created by Nexus-Path Multi-Agent System',
-            'start': {
-                'dateTime': time_str,
-                'timeZone': 'Asia/Kolkata',
-            },
+            'start': {'dateTime': time_str, 'timeZone': 'Asia/Kolkata'},
             'end': {
                 'dateTime': (datetime.fromisoformat(time_str) + timedelta(hours=1)).isoformat(),
-                'timeZone': 'Asia/Kolkata',
+                'timeZone': 'Asia/Kolkata'
             },
         }
 
-        # 5. Execute
-        event_result = service.events().insert(calendarId='primary', body=event).execute()
-        return f"📅 CALENDAR: Confirmed! Event created: {event_result.get('htmlLink')}"
+        event_result = service.events().insert(calendarId=TARGET_CALENDAR_ID, body=event).execute()
+
+        public_view = f"https://calendar.google.com/calendar/embed?src={TARGET_CALENDAR_ID.replace('@', '%40')}&ctz=Asia%2FKolkata" 
+        return f"📅 CALENDAR: Confirmed! | {public_view}"
 
     except Exception as e:
         print(f"❌ Calendar API Error: {e}")
