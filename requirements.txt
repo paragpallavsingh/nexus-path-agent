@@ -10,5 +10,6 @@ google-auth-oauthlib
 sqlalchemy
 psycopg2-binary
 pgvector
+pg8000
 # Networking
 requests

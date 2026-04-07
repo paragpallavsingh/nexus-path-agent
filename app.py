@@ -13,7 +13,7 @@ from googleapiclient.discovery import build
 import google.auth
 from google.auth import default
 from google.oauth2.credentials import Credentials
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Load environment variables
 load_dotenv()
@@ -23,6 +23,10 @@ MODEL_NAME = "gemini-2.5-flash" # Stable for orchestration
 
 # Initialize Vertex AI
 vertexai.init(project=PROJECT_ID, location="us-central1")
+
+#initiate alloydb
+db_url = os.getenv("DATABASE_URL")
+engine = sqlalchemy.create_engine(db_url)
 
 app = FastAPI()
 
@@ -82,7 +86,7 @@ def calendar_tool(summary, time_str):
             'description': 'Created by Nexus-Path Multi-Agent System',
             'start': {'dateTime': time_str, 'timeZone': 'Asia/Kolkata'},
             'end': {
-                'dateTime': (datetime.fromisoformat(time_str) + timedelta(hours=1)).isoformat(),
+                'dateTime': (datetime.fromisoformat(time_str.replace('Z', '+00:00')) + timedelta(hours=1)).isoformat(),
                 'timeZone': 'Asia/Kolkata'
             },
         }
@@ -115,7 +119,7 @@ SYSTEM_INSTRUCTION = (
     "{\n"
     "  'thoughts': 'A manager-level summary of how sub-agents will fulfill this request.',\n"
     "  'intents': [\n"
-    "    {'type': 'location', 'description': 'Search for [Place] in Noida'},\n"
+    "    {'type': 'location', 'description': 'Search for [Place] near Noida'},\n"
     "    {'type': 'event', 'description': '[Meeting/Event Name]', 'time': '[ISO Timestamp]'},\n"
     "    {'type': 'task', 'description': '[To-do Action Item]'}\n"
     "  ]\n"
@@ -167,24 +171,34 @@ async def execute(request: UserInput):
 
         # 3. PERSISTENCE
         print(f"📝 Logging workflow to AlloyDB...")
-        try:
-            from sqlalchemy import create_engine, text
-            db_url = os.getenv("DATABASE_URL")
-            engine = create_engine(db_url)
-            
+        try:             
+            # Filter intents into their respective categories for the new schema
+            # We use json.dumps because these columns are JSONB in AlloyDB
+            map_info = json.dumps([i for i in intents if i.get('type') == 'location'])
+            cal_info = json.dumps([i for i in intents if i.get('type') == 'event'])
+            task_info = json.dumps([i for i in intents if i.get('type') == 'task'])
+
             with engine.connect() as conn:
-                query = text("""
-                    INSERT INTO scholar_logs (user_query, agent_thoughts, executed_intents)
-                    VALUES (:query, :thoughts, :intents)
-                """)
+                query = sqlalchemy.text("""
+                    INSERT INTO nexus_logs 
+                    (user_query, primary_reasoning, map_data, calendar_data, task_data, executed_at)
+                    VALUES 
+                    (:query, :thoughts, :map, :cal, :task, :ts)
+                    """)
+                
+                # Ensure every :parameter in the query has a matching key in this dict
                 conn.execute(query, {
                     "query": request.input,
                     "thoughts": thoughts,
-                    "intents": json.dumps(intents)
+                    "map": map_info,
+                    "cal": cal_info,
+                    "task": task_info,
+                    "ts": datetime.now(timezone.utc)
                 })
                 conn.commit()
-                print("✅ Log persisted to AlloyDB")
+                print("✅ Log persisted to AlloyDB (nexus_logs)")
         except Exception as db_err:
+            # This will now catch and print specific mapping errors if any remain
             print(f"⚠️ Persistence failed: {db_err}")
 
         return {
