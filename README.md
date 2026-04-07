@@ -10,13 +10,13 @@ Nexus-Path uses a **Manager-Worker** architecture. The Primary Agent (Gemini) pe
 * 📍 **Spatial (Researcher Agent):** Fetches real-time location data and deep links via Google Places API.
 * 📅 **Temporal (Scheduler Agent):** Seamlessly books events into a dedicated Sandbox Calendar.
 * ✅ **Actionable (Coordinator Agent):** Extracts granular, atomic tasks for workflow management.
-
+* 💾 **Persistence (Memory Agent)**: Commits structured intent-trees to AlloyDB for long-term reasoning storage.
 
 
 ## 🛠️ Tech Stack
 * **Orchestration:** Gemini 2.5 Flash (Vertex AI SDK)
-* **Backend:** FastAPI (Python 3.12)
-* **Frontend:** Tailwind CSS & JavaScript (Real-time Iframe Integration)
+* **Backend:** FastAPI (Python 3.11)
+* **Frontend:** Tailwind CSS & JavaScript (Real-time AlloyDB Monitor)
 * **Database:** Google AlloyDB (PostgreSQL)
 * **Compute:** Google Cloud Run (Serverless)
 * **Networking:** Direct VPC Egress for secure, private database communication.
@@ -28,21 +28,25 @@ Nexus-Path uses a **Manager-Worker** architecture. The Primary Agent (Gemini) pe
 
 ## 📊 Live Monitoring
 The UI features a **Real-Time Agent Schedule Widget**, a public embed of the Service Account's sandbox calendar. This allows users to see the agent's scheduled actions update instantly as it "thinks" and "executes."
+The UI features a **Real-Time Agent Schedule Widget and AlloyDB Persistence Monitor**, which polls the ```/history``` endpoint to show the last 5 agent executions, proving that the AI's memory is live and persistent.
 
 ## 🎯 Example "Stress Test" Query
-> *"Plan to go to Mall Road Shimla on 5th April at 12 PM. Remind me to pack warm clothes."*
+> *"Schedule lunch at sarwan bhawan delhi at 20th april 4pm bring notepad and mic then schedule return to himgiri apartments sector 34"*
 
-**The Result:** 1. **Researcher:** Finds the exact coordinates for Mall Road, Shimla.
-2. **Scheduler:** Pins the event to the Nexus-Path Sandbox Calendar.
-3. **Coordinator:** Saves "Pack warm clothes" as an actionable task.
-4. **AlloyDB:** Records the full JSON intent-tree for later analysis.
+**The Result:** 1. **Researcher:** Finds Saravana Bhavan (Delhi) and Himgiri Apartments (Noida).
+2. **Scheduler:** Pins both events to the Nexus-Path Sandbox Calendar.
+3. **Coordinator:** Saves "Bring notepad" and "Bring mic" as actionable tasks.
+4. **AlloyDB:** Records the full reasoning and intent-tree.
 
 ## 📈 Database Schema
 ```sql
-CREATE TABLE scholar_logs (
+SQL
+CREATE TABLE nexus_logs (
     id SERIAL PRIMARY KEY,
-    log_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     user_query TEXT,
-    agent_thoughts TEXT,
-    executed_intents JSONB
+    primary_reasoning TEXT,
+    map_data JSONB,
+    calendar_data JSONB,
+    task_data JSONB
 );
