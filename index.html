@@ -66,6 +66,14 @@
         </div>
 
         <div id="results" class="space-y-4"></div>
+        <div id="alloydb-monitor" style="background: #0d1117; border: 1px solid #30363d; padding: 15px; border-radius: 8px; margin-top: 30px; font-family: 'Courier New', monospace; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+            <h4 style="color: #58a6ff; margin: 0 0 10px 0; border-bottom: 1px solid #30363d; padding-bottom: 5px;">
+                🧠 ALLOYDB PERSISTENCE LAYER (Live)
+            </h4>
+            <div id="log-entries" style="font-size: 0.85em; color: #c9d1d9; max-height: 200px; overflow-y: auto;">
+                <p style="color: #8b949e;">Initializing connection to pps-alloydb-cluster...</p>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -175,6 +183,31 @@
             alert("Orchestration failed. Check backend.");
         }
     }
+    
+    // Function to fetch the latest 5 rows from your new /history endpoint
+    async function fetchAlloyDBLogs() {
+        try {
+            const response = await fetch('/history');
+            const logs = await response.json();
+            const container = document.getElementById('log-entries');
+            
+            if (logs.length > 0) {
+                container.innerHTML = logs.map(log => `
+                    <div style="margin-bottom: 10px; padding: 8px; background: #161b22; border-left: 3px solid #238636; border-radius: 4px;">
+                        <span style="color: #8b949e; font-size: 0.8em;">[${log.ts}]</span> 
+                        <strong style="color: #f0f6fc;">Query:</strong> ${log.query}
+                        <br><small style="color: #7d8590;">Reasoning: ${log.reasoning.substring(0, 80)}...</small>
+                    </div>
+                `).join('');
+            }
+        } catch (err) {
+            console.error("Monitor Error:", err);
+        }
+    }
+
+    // 🟢 Trigger the update immediately and then every 5 seconds
+    fetchAlloyDBLogs(); 
+    setInterval(fetchAlloyDBLogs, 5000);
     </script>
 </body>
 </html>

@@ -211,6 +211,22 @@ async def execute(request: UserInput):
         print(f"❌ ORCHESTRATION ERROR: {e}")
         return {"status": "error", "message": f"Orchestration failed: {str(e)}"}
 
+@app.get("/history")
+async def get_history():
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            # Fetch the last 5 successful agent runs
+            query = text("""
+                SELECT id, user_query, primary_reasoning, executed_at 
+                FROM nexus_logs 
+                ORDER BY executed_at DESC LIMIT 5
+            """)
+            result = conn.execute(query)
+            return [{"id": r[0], "query": r[1], "reasoning": r[2], "ts": r[3].strftime("%H:%M:%S")} for r in result]
+    except Exception as e:
+        return {"error": str(e)}
+        
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)
