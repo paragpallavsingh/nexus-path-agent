@@ -13,7 +13,7 @@ from googleapiclient.discovery import build
 import google.auth
 from google.auth import default
 from google.oauth2.credentials import Credentials
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Load environment variables
 load_dotenv()
@@ -193,7 +193,7 @@ async def execute(request: UserInput):
                     "map": map_info,
                     "cal": cal_info,
                     "task": task_info,
-                    "ts": datetime.utcnow()
+                    "ts": datetime.now(timezone.utc)
                 })
                 conn.commit()
                 print("✅ Log persisted to AlloyDB (nexus_logs)")
